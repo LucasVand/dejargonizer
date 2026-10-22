@@ -1,4 +1,4 @@
-from dejargonizer.quality import validate_target
+from dejargonizer.quality import clean_target, validate_target
 from dejargonizer.labeling import _status_message
 
 
@@ -13,3 +13,8 @@ def test_quality_accepts_plain_rewrite():
 
 def test_labeling_status_reports_completion():
     assert _status_message(0, 100) == "Labeling complete: 100/100 records already labeled"
+
+
+def test_clean_target_removes_simplification_wrapper():
+    target = "Here's a rewritten version of the text in simpler language:\n\nThe study is hard."
+    assert clean_target(target) == "The study is hard."

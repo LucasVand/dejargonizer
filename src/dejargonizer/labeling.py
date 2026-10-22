@@ -1,4 +1,4 @@
-"""Cloudflare Workers AI generation of auditable silver labels."""
+"""Generate auditable silver labels with Cloudflare Workers AI or Ollama."""
 
 from __future__ import annotations
 
@@ -10,12 +10,16 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .quality import validate_target
+from .quality import clean_target, validate_target
 
-SYSTEM_PROMPT = """Rewrite technical English for a general audience. Use common words and
-short, direct sentences. Explain or replace jargon where possible. Preserve meaning, facts,
-numbers, units, names, uncertainty, and limitations. Do not add information or summarize away
-important details. Return only the rewritten text."""
+SYSTEM_PROMPT = """Rewrite the technical English for a general audience using common words and
+short, direct sentences. Explain or replace jargon where possible. Preserve the original meaning,
+facts, numbers, units, names, uncertainty, and limitations. Do not add information or summarize
+away important details.
+
+Your response must contain ONLY the rewritten plain-English text. Do not include an introduction,
+preface, explanation, heading, label, quotation marks, Markdown, code fences, or any statement
+such as "Here is the simplified version." Say nothing before or after the rewrite."""
 
 
 def _status_message(pending_count: int, total_count: int) -> str:
@@ -50,10 +54,38 @@ def _cloudflare_target(source: str, labeling: dict[str, Any]) -> str:
     payload = response.json()
     if not payload.get("success", False):
         raise RuntimeError(f"Cloudflare Workers AI request failed: {payload.get('errors', payload)}")
-    result = payload.get("result", {})
-    target = result.get("response") if isinstance(result, dict) else None
+    target = payload.get("result", {}).get("response")
     if not isinstance(target, str) or not target.strip():
         raise RuntimeError(f"Cloudflare Workers AI returned no text: {payload}")
+    return target.strip()
+
+
+def _ollama_target(source: str, labeling: dict[str, Any]) -> str:
+    import httpx
+
+    endpoint = labeling.get("endpoint", "http://100.97.198.56:11434").rstrip("/")
+    response = httpx.post(
+        f"{endpoint}/api/chat",
+        json={
+            "model": labeling["model"],
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": source},
+            ],
+            "stream": False,
+            "options": {
+                "temperature": float(labeling.get("temperature", 0.2)),
+                "num_predict": int(labeling.get("max_tokens", 300)),
+            },
+        },
+        timeout=float(labeling.get("timeout", 300)),
+    )
+    response.raise_for_status()
+    payload = response.json()
+    message = payload.get("message", {})
+    target = message.get("content") if isinstance(message, dict) else None
+    if not isinstance(target, str) or not target.strip():
+        raise RuntimeError(f"Ollama returned no text: {payload}")
     return target.strip()
 
 
@@ -65,14 +97,15 @@ def label_records(
 ) -> None:
     labeling = config["labeling"]
     provider = labeling.get("provider", "cloudflare").lower()
-    if provider != "cloudflare":
+    if provider not in {"cloudflare", "ollama"}:
         raise ValueError(f"Unsupported labeling provider: {provider}")
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     completed: set[str] = set()
     if output.exists():
         for line in output.read_text(encoding="utf-8").splitlines():
-            completed.add(json.loads(line)["source_hash"])
+            if line.strip():
+                completed.add(json.loads(line)["source_hash"])
 
     records = [
         json.loads(line)
@@ -93,12 +126,14 @@ def label_records(
             source_hash = hashlib.sha256(record["source"].encode()).hexdigest()
             if source_hash in completed:
                 continue
-            print(
-                f"[{index}/{len(records)}] Labeling {record['id']}...",
-                flush=True,
-            )
+            print(f"[{index}/{len(records)}] Labeling {record['id']}...", flush=True)
             try:
-                target = _cloudflare_target(record["source"], labeling)
+                target = (
+                    _ollama_target(record["source"], labeling)
+                    if provider == "ollama"
+                    else _cloudflare_target(record["source"], labeling)
+                )
+                target = clean_target(target)
                 issues = validate_target(record["source"], target)
             except Exception as error:
                 print(
@@ -135,11 +170,8 @@ def label_records(
             }
             target_file.write(json.dumps(item, ensure_ascii=False) + "\n")
             target_file.flush()
-            print(
-                f"[{index}/{len(records)}] Complete ({len(completed) + 1}/{len(records)})",
-                flush=True,
-            )
             completed.add(source_hash)
+            print(f"[{index}/{len(records)}] Complete", flush=True)
 
 
 def main() -> None:
@@ -147,16 +179,15 @@ def main() -> None:
     parser.add_argument("--input", default="data/interim/pilot.jsonl")
     parser.add_argument("--output", default="data/labeled/pilot.jsonl")
     parser.add_argument("--config", default="configs/pilot.yaml")
-    parser.add_argument(
-        "--split",
-        choices=("train", "validation", "test"),
-        help="Only label records assigned to this source split.",
-    )
+    parser.add_argument("--split", choices=("train", "validation", "test"))
+    parser.add_argument("--provider", choices=("cloudflare", "ollama"))
     args = parser.parse_args()
     import yaml
 
     with Path(args.config).open() as file:
         config = yaml.safe_load(file)
+    if args.provider:
+        config["labeling"]["provider"] = args.provider
     label_records(args.input, args.output, config, split_filter=args.split)
 
 

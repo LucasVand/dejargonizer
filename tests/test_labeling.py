@@ -1,6 +1,7 @@
 import json
 
 from dejargonizer.labeling import label_records
+from dejargonizer.labeling import _ollama_target
 
 
 def test_split_filter_only_labels_requested_records(tmp_path, monkeypatch):
@@ -31,3 +32,18 @@ def test_split_filter_only_labels_requested_records(tmp_path, monkeypatch):
     )
     rows = [json.loads(line) for line in output.read_text().splitlines()]
     assert [row["split"] for row in rows] == ["validation"]
+
+
+def test_ollama_target_parses_chat_response(monkeypatch):
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"message": {"content": "A simple explanation."}}
+
+    monkeypatch.setattr("httpx.post", lambda *args, **kwargs: Response())
+    assert _ollama_target(
+        "A technical sentence.",
+        {"endpoint": "http://ollama.test", "model": "test-model"},
+    ) == "A simple explanation."

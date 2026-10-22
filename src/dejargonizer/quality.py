@@ -5,11 +5,27 @@ from __future__ import annotations
 import re
 
 NUMBER_RE = re.compile(r"\b\d+(?:[.,]\d+)?%?\b")
+WRAPPER_PREFIXES = (
+    re.compile(r"^\s*here(?:'s| is) a rewritten version of the text in simpler language\s*:?\s*", re.I),
+    re.compile(r"^\s*here(?:'s| is) the simplified version\s*:?\s*", re.I),
+    re.compile(r"^\s*simplified version\s*:?\s*", re.I),
+)
+
+
+def clean_target(target: str) -> str:
+    """Remove provider framing so only the generated simplification is trained."""
+    cleaned = target.strip()
+    for prefix in WRAPPER_PREFIXES:
+        cleaned = prefix.sub("", cleaned, count=1).strip()
+    if cleaned.startswith("```") and cleaned.endswith("```"):
+        cleaned = re.sub(r"^```(?:text|markdown)?\s*", "", cleaned, flags=re.I)
+        cleaned = re.sub(r"\s*```$", "", cleaned).strip()
+    return cleaned
 
 
 def validate_target(source: str, target: str) -> list[str]:
     issues: list[str] = []
-    target = target.strip()
+    target = clean_target(target)
     if not target:
         return ["empty_target"]
     if target == source.strip():

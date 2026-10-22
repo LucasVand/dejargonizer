@@ -26,10 +26,12 @@ training:
   gradient_accumulation_steps: 16
   seed: 42
 labeling:
-  provider: cloudflare
-  model: "@cf/meta/llama-3.1-8b-instruct"
+  provider: ollama
+  endpoint: http://100.97.198.56:11434
+  model: llama3.1:8b
   prompt_version: v1
   temperature: 0.2
   max_tokens: 300
+  timeout: 300
   sample_size: 5000
   max_scan_records: 10000
