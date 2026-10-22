@@ -1,0 +1,15 @@
+datasets<5,>=4
+transformers<5,>=4.40
+accelerate<2,>=0.26
+sentencepiece<1,>=0.2
+sentence-transformers<6,>=3
+torch>=2.2
+httpx<1,>=0.27
+evaluate<1,>=0.4
+sacrebleu<3,>=2.4
+rouge-score<1,>=0.1
+textstat<1,>=0.7
+pyyaml<7,>=6
+
+[dev]
+pytest<9,>=8

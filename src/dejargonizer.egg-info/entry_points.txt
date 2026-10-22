@@ -1,0 +1,7 @@
+[console_scripts]
+dejargonizer = dejargonizer.inference:main
+dejargonizer-data = dejargonizer.data:main
+dejargonizer-evaluate = dejargonizer.evaluate:main
+dejargonizer-label = dejargonizer.labeling:main
+dejargonizer-similarity = dejargonizer.similarity:main
+dejargonizer-train = dejargonizer.train:main

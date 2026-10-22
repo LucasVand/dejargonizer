@@ -1,0 +1,35 @@
+dataset:
+  name: common-pile/arxiv_abstracts
+  split: train
+  revision: main
+  output_dir: data
+  sample_size: 10000
+  max_scan_records: 100000
+  max_source_tokens: 200
+  min_words: 50
+  max_words: 500
+  seed: 42
+  shuffle_buffer: 1000
+  chunks:
+    enabled: true
+    max_sentences: 8
+    quota_percentages: [11.11, 11.11, 11.11, 11.11, 11.11, 11.11, 11.11, 11.11, 11.12]
+model:
+  checkpoint: t5-small
+  max_input_tokens: 512
+  max_target_tokens: 256
+training:
+  output_dir: artifacts/t5-small-pilot
+  learning_rate: 0.0003
+  epochs: 3
+  batch_size: 1
+  gradient_accumulation_steps: 16
+  seed: 42
+labeling:
+  provider: cloudflare
+  model: "@cf/meta/llama-3.1-8b-instruct"
+  prompt_version: v1
+  temperature: 0.2
+  max_tokens: 300
+  sample_size: 5000
+  max_scan_records: 10000
