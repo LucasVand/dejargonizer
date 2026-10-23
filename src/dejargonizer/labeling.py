@@ -102,10 +102,24 @@ def label_records(
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     completed: set[str] = set()
+    valid_existing_lines: list[str] = []
     if output.exists():
-        for line in output.read_text(encoding="utf-8").splitlines():
-            if line.strip():
-                completed.add(json.loads(line)["source_hash"])
+        for line_number, line in enumerate(
+            output.read_text(encoding="utf-8").splitlines(), start=1
+        ):
+            if not line.strip():
+                continue
+            try:
+                item = json.loads(line)
+                completed.add(item["source_hash"])
+                valid_existing_lines.append(line)
+            except (json.JSONDecodeError, KeyError) as error:
+                print(
+                    f"Warning: ignoring malformed labeled-output line {line_number}: "
+                    f"{type(error).__name__}: {error}",
+                    file=sys.stderr,
+                    flush=True,
+                )
 
     records = [
         json.loads(line)
@@ -121,7 +135,9 @@ def label_records(
     ]
     print(_status_message(len(pending), len(records)), flush=True)
 
-    with output.open("a", encoding="utf-8") as target_file:
+    with output.open("w", encoding="utf-8") as target_file:
+        for line in valid_existing_lines:
+            target_file.write(line + "\n")
         for index, record in enumerate(records, start=1):
             source_hash = hashlib.sha256(record["source"].encode()).hexdigest()
             if source_hash in completed:

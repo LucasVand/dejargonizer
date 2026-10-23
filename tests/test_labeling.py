@@ -47,3 +47,30 @@ def test_ollama_target_parses_chat_response(monkeypatch):
         "A technical sentence.",
         {"endpoint": "http://ollama.test", "model": "test-model"},
     ) == "A simple explanation."
+
+
+def test_labeling_ignores_malformed_existing_output(tmp_path, monkeypatch):
+    source = tmp_path / "source.jsonl"
+    output = tmp_path / "labels.jsonl"
+    source.write_text(
+        json.dumps(
+            {
+                "id": "validation",
+                "split": "validation",
+                "source": "Source text for validation.",
+            }
+        )
+        + "\n"
+    )
+    output.write_text("\nnot valid json\n")
+    monkeypatch.setattr(
+        "dejargonizer.labeling._cloudflare_target",
+        lambda source, labeling: f"Simple {source}",
+    )
+    label_records(
+        source,
+        output,
+        {"labeling": {"provider": "cloudflare", "model": "test", "prompt_version": "v1"}},
+    )
+    rows = [json.loads(line) for line in output.read_text().splitlines() if line.strip()]
+    assert rows[-1]["target"] == "Simple Source text for validation."
