@@ -200,6 +200,18 @@ prints every pair below the threshold and writes:
 data/labeled/similarity.json
 ```
 
+### `verify_pairs.sh`
+
+Checks that the generated JSONL pair file is structurally valid:
+
+```bash
+./verify_pairs.sh
+```
+
+The checker validates JSON syntax, required fields, field types, valid split names, non-empty
+source and target text, source hashes, duplicate IDs, and malformed records. It exits with a
+nonzero status and reports line numbers when the file is broken.
+
 ### `train_model.sh`
 
 Fine-tunes T5-small:

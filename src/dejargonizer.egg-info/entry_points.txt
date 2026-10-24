@@ -5,3 +5,4 @@ dejargonizer-evaluate = dejargonizer.evaluate:main
 dejargonizer-label = dejargonizer.labeling:main
 dejargonizer-similarity = dejargonizer.similarity:main
 dejargonizer-train = dejargonizer.train:main
+dejargonizer-verify-pairs = dejargonizer.verify_pairs:main

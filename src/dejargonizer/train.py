@@ -8,11 +8,14 @@ from pathlib import Path
 from typing import Any
 
 
-
 def load_examples(path: str | Path) -> dict[str, Dataset]:
     from datasets import Dataset
 
-    groups: dict[str, list[dict[str, str]]] = {"train": [], "validation": [], "test": []}
+    groups: dict[str, list[dict[str, str]]] = {
+        "train": [],
+        "validation": [],
+        "test": [],
+    }
     total_by_split = {split: 0 for split in groups}
     accepted_by_split = {split: 0 for split in groups}
     with Path(path).open(encoding="utf-8") as file:
@@ -24,7 +27,9 @@ def load_examples(path: str | Path) -> dict[str, Dataset]:
             total_by_split[split] += 1
             if not item.get("issues"):
                 accepted_by_split[split] += 1
-                groups[split].append({"source": item["source"], "target": item["target"]})
+                groups[split].append(
+                    {"source": item["source"], "target": item["target"]}
+                )
     if not groups["train"] or not groups["validation"]:
         raise ValueError(
             "Need accepted train and validation examples; "
@@ -64,8 +69,10 @@ def train(input_path: str | Path, config: dict[str, Any]) -> None:
         inputs["labels"] = labels["input_ids"]
         return inputs
 
-    tokenized = {split: dataset.map(tokenize, batched=True, remove_columns=dataset.column_names)
-                 for split, dataset in datasets.items()}
+    tokenized = {
+        split: dataset.map(tokenize, batched=True, remove_columns=dataset.column_names)
+        for split, dataset in datasets.items()
+    }
     args = Seq2SeqTrainingArguments(
         output_dir=train_config["output_dir"],
         learning_rate=float(train_config["learning_rate"]),
