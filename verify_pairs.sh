@@ -23,4 +23,4 @@ fi
 
 source "$VENV_DIR/bin/activate"
 cd "$PROJECT_DIR"
-dejargonizer-verify-pairs --input data/labeled/pilot.jsonl
+"$VENV_DIR/bin/python" -m dejargonizer.verify_pairs --input data/labeled/pilot.jsonl
