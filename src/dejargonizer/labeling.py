@@ -12,10 +12,13 @@ from typing import Any
 
 from .quality import clean_target, validate_target
 
-SYSTEM_PROMPT = """Rewrite the technical English for a general audience using common words and
-short, direct sentences. Explain or replace jargon where possible. Preserve the original meaning,
-facts, numbers, units, names, uncertainty, and limitations. Do not add information or summarize
-away important details.
+SYSTEM_PROMPT = """Rewrite the technical English aggressively for a general audience with no
+specialist background. Prefer familiar everyday words over technical vocabulary. Replace jargon
+with plain explanations whenever possible, and briefly explain technical terms that must remain.
+Break long or complicated sentences into short, direct sentences. Make the result substantially
+easier to read while preserving the complete original meaning, facts, numbers, units, names,
+uncertainty, comparisons, and limitations. Do not weaken, strengthen, or invent claims. Do not
+summarize away important details.
 
 Your response must contain ONLY the rewritten plain-English text. Do not include an introduction,
 preface, explanation, heading, label, quotation marks, Markdown, code fences, or any statement
