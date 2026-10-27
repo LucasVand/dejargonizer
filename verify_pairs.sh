@@ -10,6 +10,7 @@ fi
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_DIR="$PROJECT_DIR/.venv"
 INPUT_FILE="$PROJECT_DIR/data/labeled/pilot.jsonl"
+OUTPUT_FILE="$PROJECT_DIR/data/labeled/pilot.repaired.jsonl"
 
 if [[ ! -x "$VENV_DIR/bin/python" ]]; then
   echo "Error: project virtual environment not found at $VENV_DIR" >&2
@@ -23,4 +24,6 @@ fi
 
 source "$VENV_DIR/bin/activate"
 cd "$PROJECT_DIR"
-"$VENV_DIR/bin/python" -m dejargonizer.verify_pairs --input data/labeled/pilot.jsonl
+"$VENV_DIR/bin/python" -m dejargonizer.verify_pairs \
+  --input data/labeled/pilot.jsonl \
+  --repair-copy data/labeled/pilot.repaired.jsonl

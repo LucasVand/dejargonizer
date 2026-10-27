@@ -88,10 +88,83 @@ def verify_pairs(path: str | Path) -> dict[str, Any]:
     }
 
 
+def repair_copy(input_path: str | Path, output_path: str | Path) -> dict[str, Any]:
+    """Write a repaired copy, removing only exact duplicate records.
+
+    The input is never modified. Malformed, incomplete, and conflicting records are
+    retained so they remain visible to the follow-up integrity check.
+    """
+    source = Path(input_path).resolve()
+    destination = Path(output_path).resolve()
+    if source == destination:
+        raise ValueError("Repair output must be different from the original input")
+    if not source.is_file():
+        raise FileNotFoundError(f"Pair file not found: {source}")
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    seen_fingerprints: set[str] = set()
+    kept_lines: list[str] = []
+    removed: list[str] = []
+    for line_number, raw_line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
+        if not raw_line.strip():
+            kept_lines.append(raw_line)
+            continue
+        try:
+            row = json.loads(raw_line)
+        except json.JSONDecodeError:
+            kept_lines.append(raw_line)
+            continue
+        if not isinstance(row, dict):
+            kept_lines.append(raw_line)
+            continue
+        fingerprint = json.dumps(row, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+        if fingerprint in seen_fingerprints:
+            removed.append(
+                f"line {line_number}: removed exact duplicate of an earlier complete record "
+                f"(id={row.get('id', '<missing>')!r})"
+            )
+            continue
+        seen_fingerprints.add(fingerprint)
+        kept_lines.append(raw_line)
+
+    temporary = destination.with_suffix(destination.suffix + ".tmp")
+    temporary.write_text("\n".join(kept_lines) + "\n", encoding="utf-8")
+    temporary.replace(destination)
+    return {
+        "input": str(source),
+        "output": str(destination),
+        "removed": removed,
+        "records_written": len(kept_lines),
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Verify generated training-pair integrity.")
     parser.add_argument("--input", default="data/labeled/pilot.jsonl")
+    parser.add_argument(
+        "--repair-copy",
+        help="Write a repaired copy; never modifies --input.",
+    )
     args = parser.parse_args()
+    if args.repair_copy:
+        try:
+            repair = repair_copy(args.input, args.repair_copy)
+        except (FileNotFoundError, OSError, ValueError) as error:
+            print(f"ERROR: {error}", file=sys.stderr)
+            return 1
+        print(f"Original unchanged: {repair['input']}")
+        print(f"Repaired copy written: {repair['output']}")
+        if repair["removed"]:
+            print("Repairs made:")
+            for action in repair["removed"]:
+                print(f"  {action}")
+        else:
+            print("Repairs made: none; no exact duplicate records found.")
+        print(
+            "No malformed, incomplete, or conflicting records were modified; "
+            "run integrity verification on the copy."
+        )
+        args.input = args.repair_copy
     try:
         report = verify_pairs(args.input)
     except (FileNotFoundError, OSError) as error:
