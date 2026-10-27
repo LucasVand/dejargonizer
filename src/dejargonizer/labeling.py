@@ -29,16 +29,30 @@ such as "Here is the simplified version." Say nothing before or after the rewrit
 def _status_message(pending_count: int, total_count: int) -> str:
     if pending_count == 0:
         return f"Labeling complete: {total_count}/{total_count} records already labeled"
-    return f"Starting labeling: {pending_count} pending of {total_count} records"
+    completed_count = total_count - pending_count
+    return (
+        f"Starting labeling: {completed_count}/{total_count} records already labeled; "
+        f"{pending_count} pending"
+    )
 
 
-def _performance_message(processed: int, pending: int, elapsed: float) -> str:
+def _performance_message(
+    processed: int,
+    pending: int,
+    elapsed: float,
+    *,
+    existing: int = 0,
+    total: int | None = None,
+) -> str:
     rate = processed / elapsed if elapsed > 0 else 0.0
     remaining = max(pending - processed, 0)
     eta_seconds = remaining / rate if rate > 0 else None
     eta = "unknown" if eta_seconds is None else f"{eta_seconds:.0f}s"
+    total = existing + pending if total is None else total
+    completed = min(existing + processed, total)
     return (
-        f"Progress: {processed}/{pending} requests; "
+        f"Progress: {completed}/{total} records; "
+        f"{processed}/{pending} new requests; "
         f"{rate:.2f} queries/s; elapsed {elapsed:.0f}s; ETA {eta}"
     )
 
@@ -148,6 +162,7 @@ def label_records(
         for record in records
         if hashlib.sha256(record["source"].encode()).hexdigest() not in completed
     ]
+    existing = len(records) - len(pending)
     print(_status_message(len(pending), len(records)), flush=True)
     started_at = time.monotonic()
     processed = 0
@@ -155,11 +170,15 @@ def label_records(
     with output.open("w", encoding="utf-8") as target_file:
         for line in valid_existing_lines:
             target_file.write(line + "\n")
-        for index, record in enumerate(records, start=1):
+        for record in records:
             source_hash = hashlib.sha256(record["source"].encode()).hexdigest()
             if source_hash in completed:
                 continue
-            print(f"[{index}/{len(records)}] Labeling {record['id']}...", flush=True)
+            progress_index = existing + processed + 1
+            print(
+                f"[{progress_index}/{len(records)}] Labeling {record['id']}...",
+                flush=True,
+            )
             try:
                 target = (
                     _ollama_target(record["source"], labeling)
@@ -170,7 +189,7 @@ def label_records(
                 issues = validate_target(record["source"], target)
             except Exception as error:
                 print(
-                    f"[{index}/{len(records)}] ERROR for {record['id']}: "
+                    f"[{progress_index}/{len(records)}] ERROR for {record['id']}: "
                     f"{type(error).__name__}: {error}",
                     file=sys.stderr,
                     flush=True,
@@ -190,7 +209,16 @@ def label_records(
                 target_file.write(json.dumps(item, ensure_ascii=False) + "\n")
                 target_file.flush()
                 processed += 1
-                print(_performance_message(processed, len(pending), time.monotonic() - started_at), flush=True)
+                print(
+                    _performance_message(
+                        processed,
+                        len(pending),
+                        time.monotonic() - started_at,
+                        existing=existing,
+                        total=len(records),
+                    ),
+                    flush=True,
+                )
                 continue
             item = {
                 "id": record["id"],
@@ -207,8 +235,17 @@ def label_records(
             target_file.flush()
             completed.add(source_hash)
             processed += 1
-            print(f"[{index}/{len(records)}] Complete", flush=True)
-            print(_performance_message(processed, len(pending), time.monotonic() - started_at), flush=True)
+            print(f"[{progress_index}/{len(records)}] Complete", flush=True)
+            print(
+                _performance_message(
+                    processed,
+                    len(pending),
+                    time.monotonic() - started_at,
+                    existing=existing,
+                    total=len(records),
+                ),
+                flush=True,
+            )
     elapsed = time.monotonic() - started_at
     print(
         f"Labeling finished: {processed} requests in {elapsed:.0f}s; "

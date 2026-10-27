@@ -47,3 +47,32 @@ def test_chunk_quotas_round_to_requested_sample_size():
     targets = _quota_targets(100, [11.11] * 8 + [11.12])
     assert sum(targets) == 100
     assert max(targets) - min(targets) <= 1
+
+
+def test_stream_pilot_applies_offset_before_selection(monkeypatch):
+    class FakeStream:
+        def __iter__(self):
+            for index in range(10):
+                yield {"id": str(index), "abstract": "word " * 50}
+
+        def shuffle(self, **kwargs):
+            return self
+
+    monkeypatch.setattr("datasets.load_dataset", lambda *args, **kwargs: FakeStream())
+    config = {
+        "dataset": {
+            "name": "test",
+            "split": "train",
+            "revision": "main",
+            "sample_size": 2,
+            "max_scan_records": 2,
+            "offset": 4,
+            "max_source_tokens": 100,
+            "min_words": 2,
+            "max_words": 100,
+            "seed": 1,
+            "shuffle_buffer": 2,
+        }
+    }
+    records = stream_pilot(config)
+    assert [record["id"] for record in records] == ["4", "5"]

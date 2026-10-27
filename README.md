@@ -47,12 +47,38 @@ dataset:
 - `sample_size` is the maximum number of source records written locally.
 - `max_scan_records` is the maximum number of remote records examined. It must be at least
   `sample_size`.
+- `offset` skips that many records in the deterministic shuffled stream before scanning. The
+  scan window is `[offset, offset + max_scan_records)`, which lets separate datasets use
+  non-overlapping windows.
 - `min_words` and `max_words` filter source abstracts.
 - `max_source_tokens` is an additional source-length safety limit.
 - `seed` and `shuffle_buffer` control deterministic streamed selection.
 
 The data loader always uses streaming mode. It never downloads or caches the complete arXiv
 dataset. Only the selected records are written to `data/interim/pilot.jsonl`.
+
+To create two disjoint source datasets with the same configuration, use separate config copies:
+
+```yaml
+# configs/pilot-a.yaml
+dataset:
+  offset: 0
+  sample_size: 10000
+  max_scan_records: 100000
+```
+
+```yaml
+# configs/pilot-b.yaml
+dataset:
+  offset: 100000
+  sample_size: 10000
+  max_scan_records: 100000
+```
+
+Run each config separately and write each result to a different output directory. Keep the same
+dataset revision, seed, shuffle buffer, filters, and quota settings. The second window begins
+after the first window's entire scan range, so selected records cannot overlap between the two
+datasets.
 
 ### Sentence-length quotas
 

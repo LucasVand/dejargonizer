@@ -5,6 +5,7 @@ dataset:
   output_dir: data
   sample_size: 10000
   max_scan_records: 100000
+  offset: 0
   max_source_tokens: 200
   min_words: 50
   max_words: 500

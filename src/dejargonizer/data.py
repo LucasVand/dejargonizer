@@ -119,6 +119,9 @@ def stream_pilot(config: dict[str, Any]) -> list[dict[str, Any]]:
     dataset_config = config["dataset"]
     sample_size = int(dataset_config["sample_size"])
     max_scan = int(dataset_config["max_scan_records"])
+    offset = int(dataset_config.get("offset", 0))
+    if offset < 0:
+        raise ValueError("dataset.offset must be non-negative")
     if sample_size < 1 or max_scan < sample_size:
         raise ValueError("sample_size must be positive and no greater than max_scan_records")
     if not dataset_config.get("max_source_tokens"):
@@ -151,7 +154,8 @@ def stream_pilot(config: dict[str, Any]) -> list[dict[str, Any]]:
         f"scan limit={max_scan}",
         flush=True,
     )
-    for scanned, record in enumerate(itertools.islice(stream, max_scan), start=1):
+    window = itertools.islice(stream, offset, offset + max_scan)
+    for scanned, record in enumerate(window, start=1):
         try:
             text = _text(record)
         except KeyError:
@@ -236,6 +240,7 @@ def write_pilot(records: Iterable[dict[str, Any]], output_dir: str | Path, confi
                 "revision": config["dataset"].get("revision"),
                 "sample_size": record_count,
                 "max_scan_records": config["dataset"]["max_scan_records"],
+                "offset": config["dataset"].get("offset", 0),
                 "seed": config["dataset"]["seed"],
             },
             indent=2,

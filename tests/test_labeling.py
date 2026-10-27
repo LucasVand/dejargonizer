@@ -55,6 +55,18 @@ def test_performance_message_reports_rate_and_eta():
     assert "ETA 150s" in message
 
 
+def test_performance_message_includes_existing_records():
+    message = _performance_message(
+        processed=8,
+        pending=16351,
+        elapsed=4,
+        existing=3649,
+        total=20000,
+    )
+    assert "Progress: 3657/20000 records" in message
+    assert "8/16351 new requests" in message
+
+
 def test_labeling_ignores_malformed_existing_output(tmp_path, monkeypatch):
     source = tmp_path / "source.jsonl"
     output = tmp_path / "labels.jsonl"
