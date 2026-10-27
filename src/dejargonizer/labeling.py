@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,17 @@ def _status_message(pending_count: int, total_count: int) -> str:
     if pending_count == 0:
         return f"Labeling complete: {total_count}/{total_count} records already labeled"
     return f"Starting labeling: {pending_count} pending of {total_count} records"
+
+
+def _performance_message(processed: int, pending: int, elapsed: float) -> str:
+    rate = processed / elapsed if elapsed > 0 else 0.0
+    remaining = max(pending - processed, 0)
+    eta_seconds = remaining / rate if rate > 0 else None
+    eta = "unknown" if eta_seconds is None else f"{eta_seconds:.0f}s"
+    return (
+        f"Progress: {processed}/{pending} requests; "
+        f"{rate:.2f} queries/s; elapsed {elapsed:.0f}s; ETA {eta}"
+    )
 
 
 def _cloudflare_target(source: str, labeling: dict[str, Any]) -> str:
@@ -137,6 +149,8 @@ def label_records(
         if hashlib.sha256(record["source"].encode()).hexdigest() not in completed
     ]
     print(_status_message(len(pending), len(records)), flush=True)
+    started_at = time.monotonic()
+    processed = 0
 
     with output.open("w", encoding="utf-8") as target_file:
         for line in valid_existing_lines:
@@ -175,6 +189,8 @@ def label_records(
                 }
                 target_file.write(json.dumps(item, ensure_ascii=False) + "\n")
                 target_file.flush()
+                processed += 1
+                print(_performance_message(processed, len(pending), time.monotonic() - started_at), flush=True)
                 continue
             item = {
                 "id": record["id"],
@@ -190,7 +206,15 @@ def label_records(
             target_file.write(json.dumps(item, ensure_ascii=False) + "\n")
             target_file.flush()
             completed.add(source_hash)
+            processed += 1
             print(f"[{index}/{len(records)}] Complete", flush=True)
+            print(_performance_message(processed, len(pending), time.monotonic() - started_at), flush=True)
+    elapsed = time.monotonic() - started_at
+    print(
+        f"Labeling finished: {processed} requests in {elapsed:.0f}s; "
+        f"{processed / elapsed if elapsed > 0 else 0.0:.2f} queries/s",
+        flush=True,
+    )
 
 
 def main() -> None:

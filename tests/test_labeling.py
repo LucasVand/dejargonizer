@@ -1,7 +1,7 @@
 import json
 
 from dejargonizer.labeling import label_records
-from dejargonizer.labeling import _ollama_target
+from dejargonizer.labeling import _ollama_target, _performance_message
 
 
 def test_split_filter_only_labels_requested_records(tmp_path, monkeypatch):
@@ -47,6 +47,12 @@ def test_ollama_target_parses_chat_response(monkeypatch):
         "A technical sentence.",
         {"endpoint": "http://ollama.test", "model": "test-model"},
     ) == "A simple explanation."
+
+
+def test_performance_message_reports_rate_and_eta():
+    message = _performance_message(processed=25, pending=100, elapsed=50)
+    assert "0.50 queries/s" in message
+    assert "ETA 150s" in message
 
 
 def test_labeling_ignores_malformed_existing_output(tmp_path, monkeypatch):
