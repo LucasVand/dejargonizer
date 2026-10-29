@@ -113,3 +113,26 @@ def test_combine_pairs_prefers_first_duplicate_id(tmp_path):
     rows = [json.loads(line) for line in output_path.read_text().splitlines()]
     assert rows == [first]
     assert result["duplicates_skipped"] == 1
+
+
+def test_combine_pairs_deduplicates_records_within_one_input(tmp_path):
+    first_path = tmp_path / "first.jsonl"
+    second_path = tmp_path / "second.jsonl"
+    output_path = tmp_path / "combined.jsonl"
+    first = make_pair()
+    second = {**first, "target": "A later target for the same pair."}
+    first_path.write_text(json.dumps(first) + "\n" + json.dumps(second) + "\n")
+    other = {
+        **first,
+        "id": "pair-2",
+        "source": "Another technical source.",
+        "source_hash": hashlib.sha256("Another technical source.".encode()).hexdigest(),
+    }
+    second_path.write_text(json.dumps(other) + "\n")
+
+    result = combine_pairs([first_path, second_path], output_path)
+
+    rows = [json.loads(line) for line in output_path.read_text().splitlines()]
+    assert [row["id"] for row in rows] == ["pair-1", "pair-2"]
+    assert rows[0]["target"] == first["target"]
+    assert result["duplicates_skipped"] == 1

@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
 
 from .verify_pairs import verify_pairs
+
+_DUPLICATE_ID_ERROR = re.compile(r"^line \d+: duplicate id ")
 
 
 def combine_pairs(
@@ -24,10 +27,15 @@ def combine_pairs(
 
     for path in paths:
         report = verify_pairs(path)
-        if not report["valid"]:
-            details = "; ".join(report["errors"][:3])
-            if len(report["errors"]) > 3:
-                details += f"; and {len(report['errors']) - 3} more error(s)"
+        blocking_errors = [
+            error
+            for error in report["errors"]
+            if not _DUPLICATE_ID_ERROR.match(error)
+        ]
+        if blocking_errors:
+            details = "; ".join(blocking_errors[:3])
+            if len(blocking_errors) > 3:
+                details += f"; and {len(blocking_errors) - 3} more error(s)"
             raise ValueError(f"Cannot combine invalid pair file {path}: {details}")
 
     output.parent.mkdir(parents=True, exist_ok=True)

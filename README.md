@@ -247,9 +247,10 @@ Combines generated pair files into one output file without modifying either inpu
   --output data/labeled/pilot-combined.jsonl
 ```
 
-Inputs are checked before combining. When records share an ID or source hash, the record from the
-first input file supplied wins and later duplicates are skipped, even when their targets differ.
-Malformed records and invalid pair files stop the merge without replacing the output.
+Inputs are checked before combining. When records share an ID or source hash, the first occurrence
+wins: duplicates later in the same file or in later input files are skipped, even when their
+targets differ. Malformed records and other invalid pair-file errors stop the merge without
+replacing the output.
 
 ### `train_model.sh`
 
