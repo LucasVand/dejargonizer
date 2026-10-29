@@ -32,6 +32,7 @@ dejargonizer-train = "dejargonizer.train:main"
 dejargonizer-evaluate = "dejargonizer.evaluate:main"
 dejargonizer-similarity = "dejargonizer.similarity:main"
 dejargonizer-verify-pairs = "dejargonizer.verify_pairs:main"
+dejargonizer-combine-pairs = "dejargonizer.combine_pairs:main"
 dejargonizer = "dejargonizer.inference:main"
 
 [tool.setuptools.packages.find]

@@ -2,6 +2,7 @@ import hashlib
 import json
 
 from dejargonizer.verify_pairs import repair_copy, verify_pairs
+from dejargonizer.combine_pairs import combine_pairs
 
 
 def make_pair(source="Technical source.", target="Simple source."):
@@ -58,3 +59,37 @@ def test_repair_copy_does_not_remove_conflicting_duplicate(tmp_path):
     result = repair_copy(source, repaired)
     assert result["removed"] == []
     assert len(repaired.read_text().splitlines()) == 2
+
+
+def test_combine_pairs_preserves_order_and_skips_exact_duplicates(tmp_path):
+    first_path = tmp_path / "first.jsonl"
+    second_path = tmp_path / "second.jsonl"
+    output_path = tmp_path / "combined.jsonl"
+    first = make_pair()
+    second = {**first, "id": "pair-2", "source": "Another technical source."}
+    second["source_hash"] = hashlib.sha256(second["source"].encode()).hexdigest()
+    first_path.write_text(json.dumps(first) + "\n")
+    second_path.write_text(json.dumps(first) + "\n" + json.dumps(second) + "\n")
+
+    result = combine_pairs([first_path, second_path], output_path)
+
+    rows = [json.loads(line) for line in output_path.read_text().splitlines()]
+    assert [row["id"] for row in rows] == ["pair-1", "pair-2"]
+    assert result["duplicates_skipped"] == 1
+
+
+def test_combine_pairs_rejects_conflicting_duplicate_source(tmp_path):
+    first_path = tmp_path / "first.jsonl"
+    second_path = tmp_path / "second.jsonl"
+    output_path = tmp_path / "combined.jsonl"
+    first = make_pair()
+    second = {**first, "target": "Different target."}
+    first_path.write_text(json.dumps(first) + "\n")
+    second_path.write_text(json.dumps(second) + "\n")
+
+    try:
+        combine_pairs([first_path, second_path], output_path)
+    except ValueError as error:
+        assert "Conflicting duplicate" in str(error)
+    else:
+        raise AssertionError("Expected conflicting duplicate to fail")

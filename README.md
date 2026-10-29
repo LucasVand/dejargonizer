@@ -238,6 +238,19 @@ The checker validates JSON syntax, required fields, field types, valid split nam
 source and target text, source hashes, duplicate IDs, and malformed records. It exits with a
 nonzero status and reports line numbers when the file is broken.
 
+### `combine_pairs.sh`
+
+Combines generated pair files into one output file without modifying either input:
+
+```bash
+./combine_pairs.sh data/labeled/pilot-a.jsonl data/labeled/pilot-b.jsonl \
+  --output data/labeled/pilot-combined.jsonl
+```
+
+Inputs are checked before combining. Exact duplicate records are skipped. Conflicting duplicate
+IDs or source hashes, malformed records, and invalid pair files stop the merge without replacing
+the output.
+
 ### `train_model.sh`
 
 Fine-tunes T5-small:
