@@ -14,7 +14,7 @@ from .verify_pairs import verify_pairs
 def combine_pairs(
     input_paths: list[str | Path], output_path: str | Path
 ) -> dict[str, Any]:
-    """Combine valid pair files, preserving input order and removing exact duplicates."""
+    """Combine valid pair files, with records from earlier inputs taking precedence."""
     paths = [Path(path).resolve() for path in input_paths]
     output = Path(output_path).resolve()
     if output in paths:
@@ -51,18 +51,9 @@ def combine_pairs(
                     source_hash = row["source_hash"]
                     previous_id = seen_ids.get(row_id)
                     previous_hash = seen_hashes.get(source_hash)
-                    if previous_id == fingerprint and previous_hash == fingerprint:
+                    if previous_id is not None or previous_hash is not None:
                         duplicates_skipped += 1
                         continue
-                    if previous_id is not None:
-                        raise ValueError(
-                            f"Conflicting duplicate id {row_id!r} in {path}:{line_number}"
-                        )
-                    if previous_hash is not None:
-                        raise ValueError(
-                            f"Conflicting duplicate source_hash {source_hash!r} "
-                            f"in {path}:{line_number}"
-                        )
                     destination.write(json.dumps(row, ensure_ascii=False) + "\n")
                     seen_ids[row_id] = fingerprint
                     seen_hashes[source_hash] = fingerprint
@@ -94,7 +85,10 @@ def main() -> int:
         return 1
     print(f"Combined {len(result['inputs'])} files into {result['output']}")
     print(f"Records written: {result['records_written']}")
-    print(f"Exact duplicates skipped: {result['duplicates_skipped']}")
+    print(
+        f"Duplicate records skipped (earlier input preferred): "
+        f"{result['duplicates_skipped']}"
+    )
     return 0
 
 

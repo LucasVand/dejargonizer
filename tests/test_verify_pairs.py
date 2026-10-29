@@ -78,7 +78,7 @@ def test_combine_pairs_preserves_order_and_skips_exact_duplicates(tmp_path):
     assert result["duplicates_skipped"] == 1
 
 
-def test_combine_pairs_rejects_conflicting_duplicate_source(tmp_path):
+def test_combine_pairs_prefers_first_conflicting_duplicate_source(tmp_path):
     first_path = tmp_path / "first.jsonl"
     second_path = tmp_path / "second.jsonl"
     output_path = tmp_path / "combined.jsonl"
@@ -87,9 +87,29 @@ def test_combine_pairs_rejects_conflicting_duplicate_source(tmp_path):
     first_path.write_text(json.dumps(first) + "\n")
     second_path.write_text(json.dumps(second) + "\n")
 
-    try:
-        combine_pairs([first_path, second_path], output_path)
-    except ValueError as error:
-        assert "Conflicting duplicate" in str(error)
-    else:
-        raise AssertionError("Expected conflicting duplicate to fail")
+    result = combine_pairs([first_path, second_path], output_path)
+
+    rows = [json.loads(line) for line in output_path.read_text().splitlines()]
+    assert rows == [first]
+    assert result["duplicates_skipped"] == 1
+
+
+def test_combine_pairs_prefers_first_duplicate_id(tmp_path):
+    first_path = tmp_path / "first.jsonl"
+    second_path = tmp_path / "second.jsonl"
+    output_path = tmp_path / "combined.jsonl"
+    first = make_pair()
+    second = {
+        **first,
+        "source": "Different source.",
+        "target": "Different target.",
+        "source_hash": hashlib.sha256("Different source.".encode()).hexdigest(),
+    }
+    first_path.write_text(json.dumps(first) + "\n")
+    second_path.write_text(json.dumps(second) + "\n")
+
+    result = combine_pairs([first_path, second_path], output_path)
+
+    rows = [json.loads(line) for line in output_path.read_text().splitlines()]
+    assert rows == [first]
+    assert result["duplicates_skipped"] == 1
