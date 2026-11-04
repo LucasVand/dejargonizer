@@ -278,8 +278,19 @@ Evaluates the saved model on accepted test pairs:
 ./test.sh
 ```
 
-It runs SARI and readability evaluation through `dejargonizer-evaluate`. Generate test pairs first
-with `./generate_pairs.sh --test`.
+It runs SARI and several quality checks through `dejargonizer-evaluate`. Generate test pairs first
+with `./generate_pairs.sh --test`. The JSON output includes:
+
+- SARI for edit quality against the generated reference simplifications.
+- Source, prediction, and reference Flesch readability scores.
+- Readability improvement and average word counts.
+- Prediction word reduction percentage.
+- Source/prediction and reference/prediction word-overlap scores.
+- Source-number preservation rate, which helps detect changed or missing quantities.
+- Empty-prediction and unchanged-prediction rates.
+
+No single metric proves that a rewrite preserves meaning. Review examples with low number
+preservation or low reference overlap alongside the aggregate scores.
 
 ### `simplify.sh`
 

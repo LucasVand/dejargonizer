@@ -5,7 +5,7 @@ dataset:
   output_dir: data
   sample_size: 10000
   max_scan_records: 100000
-  offset: 0
+  offset: 100000
   max_source_tokens: 200
   min_words: 50
   max_words: 500
@@ -14,7 +14,8 @@ dataset:
   chunks:
     enabled: true
     max_sentences: 8
-    quota_percentages: [11.11, 11.11, 11.11, 11.11, 11.11, 11.11, 11.11, 11.11, 11.12]
+    quota_percentages:
+      [11.11, 11.11, 11.11, 11.11, 11.11, 11.11, 11.11, 11.11, 11.12]
 model:
   checkpoint: t5-small
   max_input_tokens: 512
