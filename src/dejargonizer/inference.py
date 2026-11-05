@@ -3,9 +3,41 @@
 from __future__ import annotations
 
 import argparse
+import resource
 import sys
 import time
 from pathlib import Path
+
+
+def _process_peak_memory_mb() -> float:
+    usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    # macOS reports bytes; Linux reports kilobytes.
+    bytes_used = usage if sys.platform == "darwin" else usage * 1024
+    return round(bytes_used / (1024 * 1024), 2)
+
+
+def _device_memory_metrics(torch: object) -> dict[str, float]:
+    metrics: dict[str, float] = {}
+    cuda = getattr(torch, "cuda", None)
+    if cuda is not None and cuda.is_available():
+        metrics["device_memory_allocated_mb"] = round(
+            cuda.memory_allocated() / (1024 * 1024), 2
+        )
+        metrics["device_memory_reserved_mb"] = round(
+            cuda.memory_reserved() / (1024 * 1024), 2
+        )
+        metrics["device_memory_peak_allocated_mb"] = round(
+            cuda.max_memory_allocated() / (1024 * 1024), 2
+        )
+        return metrics
+
+    mps = getattr(torch, "mps", None)
+    if mps is not None and hasattr(mps, "current_allocated_memory"):
+        metrics["device_memory_allocated_mb"] = round(
+            mps.current_allocated_memory() / (1024 * 1024), 2
+        )
+    return metrics
+
 
 class Dejargonizer:
     def __init__(self, checkpoint: str | Path):
@@ -17,6 +49,10 @@ class Dejargonizer:
         self.model.eval()
         self.load_seconds = time.perf_counter() - started
         self.device = str(next(self.model.parameters()).device)
+        import torch
+
+        self.process_peak_memory_after_load_mb = _process_peak_memory_mb()
+        self.device_memory_after_load = _device_memory_metrics(torch)
 
     def simplify(
         self,
@@ -92,6 +128,12 @@ class Dejargonizer:
             "output_tokens_per_second": round(
                 output_tokens / generation_seconds if generation_seconds else 0.0, 2
             ),
+            "process_peak_memory_mb": _process_peak_memory_mb(),
+            "process_peak_memory_after_load_mb": self.process_peak_memory_after_load_mb,
+            "device_memory_after_load_mb": self.device_memory_after_load.get(
+                "device_memory_allocated_mb", 0.0
+            ),
+            **_device_memory_metrics(torch),
         }
         return (result, metrics) if return_metrics else result
 
@@ -101,12 +143,14 @@ def main() -> None:
     parser.add_argument("text")
     parser.add_argument("--checkpoint", default="artifacts/t5-small-pilot")
     args = parser.parse_args()
+    print("=== DIAGNOSTICS ===", file=sys.stderr, flush=True)
     print(f"Loading model from {args.checkpoint}...", file=sys.stderr, flush=True)
     load_started = time.perf_counter()
     model = Dejargonizer(args.checkpoint)
     print(
         f"Model loaded in {time.perf_counter() - load_started:.2f}s "
-        f"(device: {model.device})",
+        f"(device: {model.device}; "
+        f"process peak memory: {model.process_peak_memory_after_load_mb:.2f} MB)",
         file=sys.stderr,
         flush=True,
     )
@@ -120,8 +164,26 @@ def main() -> None:
         file=sys.stderr,
         flush=True,
     )
+    print(
+        f"Device: {metrics['device']}\n"
+        f"Timing: tokenization={metrics['tokenization_seconds']:.2f}s, "
+        f"generation={metrics['generation_seconds']:.2f}s, "
+        f"decoding={metrics['decoding_seconds']:.2f}s, "
+        f"total inference={metrics['total_inference_seconds']:.2f}s\n"
+        f"Tokens: input={metrics['input_tokens']}, output={metrics['output_tokens']}, "
+        f"speed={metrics['output_tokens_per_second']:.2f} tokens/s\n"
+        f"Memory: process peak={metrics['process_peak_memory_mb']:.2f} MB"
+        + (
+            f", device allocated={metrics['device_memory_allocated_mb']:.2f} MB"
+            if "device_memory_allocated_mb" in metrics
+            else ""
+        ),
+        file=sys.stderr,
+        flush=True,
+    )
+    print("=== END DIAGNOSTICS ===", file=sys.stderr, flush=True)
+    print("=== MODEL OUTPUT ===")
     print(result)
-    print(f"Metrics: {metrics}", file=sys.stderr)
 
 
 if __name__ == "__main__":
