@@ -70,7 +70,7 @@ class Dejargonizer:
             print("Tokenizing input...", file=sys.stderr, flush=True)
         started = time.perf_counter()
         inputs = self.tokenizer(
-            f"simplify: {text.strip()}",
+            f"aggressively simplify: {text.strip()}",
             return_tensors="pt",
             truncation=True,
             max_length=max_input_tokens,

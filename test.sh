@@ -10,7 +10,7 @@ fi
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_DIR="$PROJECT_DIR/.venv"
 CHECKPOINT="$PROJECT_DIR/artifacts/t5-small-pilot"
-INPUT_FILE="$PROJECT_DIR/data/labeled/pilot.jsonl"
+INPUT_FILE="$PROJECT_DIR/data/combined/pilot.jsonl"
 
 if [[ ! -x "$VENV_DIR/bin/python" ]]; then
   echo "Error: project virtual environment not found at $VENV_DIR" >&2
@@ -33,5 +33,5 @@ source "$VENV_DIR/bin/activate"
 cd "$PROJECT_DIR"
 echo "Evaluating saved model on accepted test pairs..."
 dejargonizer-evaluate \
-  --input data/labeled/pilot.jsonl \
+  --input data/combined/pilot.jsonl \
   --checkpoint artifacts/t5-small-pilot

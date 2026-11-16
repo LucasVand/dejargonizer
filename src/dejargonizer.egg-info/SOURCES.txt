@@ -16,6 +16,7 @@ src/dejargonizer.egg-info/entry_points.txt
 src/dejargonizer.egg-info/requires.txt
 src/dejargonizer.egg-info/top_level.txt
 tests/test_data.py
+tests/test_evaluate.py
 tests/test_labeling.py
 tests/test_quality.py
 tests/test_similarity.py
