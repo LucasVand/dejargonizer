@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+data/*
 data/raw/
 data/interim/
 data/labeled/
