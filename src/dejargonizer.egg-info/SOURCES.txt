@@ -1,10 +1,12 @@
 README.md
 pyproject.toml
 src/dejargonizer/__init__.py
+src/dejargonizer/combine_pairs.py
 src/dejargonizer/data.py
 src/dejargonizer/evaluate.py
 src/dejargonizer/inference.py
 src/dejargonizer/labeling.py
+src/dejargonizer/prompt.py
 src/dejargonizer/quality.py
 src/dejargonizer/similarity.py
 src/dejargonizer/train.py
@@ -17,7 +19,9 @@ src/dejargonizer.egg-info/requires.txt
 src/dejargonizer.egg-info/top_level.txt
 tests/test_data.py
 tests/test_evaluate.py
+tests/test_inference.py
 tests/test_labeling.py
+tests/test_prompt.py
 tests/test_quality.py
 tests/test_similarity.py
 tests/test_verify_pairs.py

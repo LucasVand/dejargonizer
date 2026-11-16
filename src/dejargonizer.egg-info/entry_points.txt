@@ -1,8 +1,10 @@
 [console_scripts]
 dejargonizer = dejargonizer.inference:main
+dejargonizer-combine-pairs = dejargonizer.combine_pairs:main
 dejargonizer-data = dejargonizer.data:main
 dejargonizer-evaluate = dejargonizer.evaluate:main
 dejargonizer-label = dejargonizer.labeling:main
+dejargonizer-prompt = dejargonizer.prompt:main
 dejargonizer-similarity = dejargonizer.similarity:main
 dejargonizer-train = dejargonizer.train:main
 dejargonizer-verify-pairs = dejargonizer.verify_pairs:main
